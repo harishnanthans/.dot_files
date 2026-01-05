@@ -1,10 +1,27 @@
 vim.g.mapleader = " "
-vim.opt.number = true
-vim.opt.relativenumber = true
-vim.opt.expandtab = true
-vim.opt.shiftwidth = 4
-vim.opt.tabstop = 4
-vim.opt.ignorecase = true
-vim.opt.smartcase = true
-vim.keymap.set("n", "<leader>w", ":w<CR>", { silent = true })
-vim.keymap.set("n", "<leader>h", ":nohlsearch<CR>", { silent = true })
+
+-- Configure Augment workspace folders *before* the plugin is loaded.
+-- This makes Augment index the project you open Neovim in.
+-- You can change this later if you want multiple workspaces.
+vim.g.augment_workspace_folders = { vim.loop.cwd() }
+
+-- lazy.nvim bootstrap (plugin manager)
+local lazypath = vim.fn.stdpath("data") .. "/lazy/lazy.nvim"
+if not vim.loop.fs_stat(lazypath) then
+  vim.fn.system({
+    "git",
+    "clone",
+    "--filter=blob:none",
+    "https://github.com/folke/lazy.nvim.git",
+    "--branch=stable", -- latest stable release
+    lazypath,
+  })
+end
+vim.opt.rtp:prepend(lazypath)
+
+-- Core settings and keymaps
+require("harish.core.options").setup()
+require("harish.core.keymaps").setup()
+
+-- Plugin system entrypoint
+require("harish.plugins").setup()

@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set -e
+
+# List of root folders that contain your projects.
+# Add more paths here as you need them.
+ROOTS=(
+  "$HOME/Desktop/tekion"
+  "$HOME/Desktop/dev"
+)
+
+# Build a list of "project_name<TAB>root_path" lines
+candidates=$(
+	  for root in "${ROOTS[@]}"; do
+	    [ -d "$root" ] || continue
+	    find "$root" -maxdepth 1 -mindepth 1 -type d \
+	      | while IFS= read -r dir; do
+	          name=${dir##*/}
+	          printf '%s\t%s\n' "$name" "$root"
+	        done
+	  done
+
+	  # Add dotfiles explicitly as a single project under $HOME
+	  if [ -d "$HOME/dotfiles" ]; then
+	    printf '%s\t%s\n' "dotfiles" "$HOME"
+	  fi
+)
+
+# If no projects found, exit quietly
+[ -z "$candidates" ] && exit 0
+
+# Let fzf pick a project (shows only the name column)
+selection=$(printf '%s
+' "$candidates" | fzf --with-nth=1) || exit 0
+[ -z "$selection" ] && exit 0
+
+# Split back into project name and root path
+project=${selection%%$'\t'*}
+root=${selection#*$'\t'}
+
+session="$project"
+
+if tmux has-session -t "$session" 2>/dev/null; then
+  if [ -n "${TMUX-}" ]; then
+    tmux switch-client -t "$session"
+  else
+    tmux attach -t "$session"
+  fi
+else
+  if [ -n "${TMUX-}" ]; then
+    tmux new-session -d -s "$session" -c "$root/$project"
+    tmux switch-client -t "$session"
+  else
+    tmux new-session -s "$session" -c "$root/$project"
+  fi
+fi
+
