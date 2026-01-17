@@ -12,3 +12,10 @@ project_session_widget() {
 }
 zle -N project_session_widget
 bindkey '^P' project_session_widget   # Option+P (Alt+P)
+
+parse_git_branch() {
+    local b=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    [[ -n $b ]] && echo "%F{red}($b)%f"
+}
+setopt PROMPT_SUBST
+PROMPT=' %~$(parse_git_branch) %# '

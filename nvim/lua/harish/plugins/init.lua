@@ -5,14 +5,21 @@ local M = {}
 
 function M.setup()
 	require("lazy").setup({
-		{
-			"catppuccin/nvim",
-			name = "catppuccin",
-			priority = 1000,
-			config = function()
-				vim.cmd.colorscheme("catppuccin-mocha")
-			end,
-		},
+				{
+					"rose-pine/neovim",
+					name = "rose-pine",
+					priority = 1000,
+					config = function()
+						require("rose-pine").setup({
+							variant = "moon", -- main | moon | dawn
+							styles = {
+								bold = true,
+								italic = false,
+							},
+						})
+						vim.cmd.colorscheme("rose-pine")
+					end,
+				},
 		{
 			"stevearc/oil.nvim",
 			-- Use oil as the default file explorer so opening a directory (e.g. `nvim .`)
@@ -35,15 +42,25 @@ function M.setup()
 				{ "<leader>u", "<CMD>UndotreeToggle<CR>", desc = "Toggle undo tree" },
 			},
 		},
-		{
-			"nvim-telescope/telescope.nvim",
-			dependencies = { "nvim-lua/plenary.nvim" },
-            pickers = {
-                find_files = {
-                    hidden = true
-                }
-            },
-			keys = {
+			{
+				"nvim-telescope/telescope.nvim",
+				dependencies = { "nvim-lua/plenary.nvim" },
+				-- Configure Telescope to hide common dependency/vendor directories
+				opts = {
+					defaults = {
+						file_ignore_patterns = {
+							"node_modules/", -- JS/TS deps
+							"vendor/",       -- Go/PHP vendor
+							"%.git/",        -- Git internals
+						},
+					},
+					pickers = {
+						find_files = {
+							hidden = true,
+						},
+					},
+				},
+				keys = {
 				{
 					"<leader>sf",
 					function()
@@ -155,7 +172,16 @@ function M.setup()
 					-- basic LSP navigation
 					map("n", "gd", vim.lsp.buf.definition, "LSP: goto definition")
 					map("n", "gD", vim.lsp.buf.declaration, "LSP: goto declaration")
-					map("n", "gI", vim.lsp.buf.implementation, "LSP: goto implementation")
+
+						local function lsp_implementations()
+							local ok, builtin = pcall(require, "telescope.builtin")
+							if ok then
+								builtin.lsp_implementations()
+							else
+								vim.lsp.buf.implementation()
+							end
+						end
+						map("n", "gI", lsp_implementations, "LSP: implementations")
 
 					-- use gR (not gr) so we do not conflict with Treesitter's grn/grm/grc
 					local function lsp_references()
