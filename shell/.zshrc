@@ -1,7 +1,11 @@
 export EDITOR="nvim"
-set -o vi
+bindkey -e  # Use Emacs-style keybindings (no Vim mode in shell)
 setopt inc_append_history share_history autopushd
 HISTSIZE=5000; SAVEHIST=5000; HISTFILE=~/.zsh_history
+
+# History prefix search - type beginning of command (full line), then use up/down arrows
+bindkey '^[[A' history-beginning-search-backward  # Up arrow
+bindkey '^[[B' history-beginning-search-forward   # Down arrow
 
 export DOTFILES="$HOME/dotfiles"
 export PATH="$DOTFILES/bin:$PATH"

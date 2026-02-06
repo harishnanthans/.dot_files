@@ -5,21 +5,26 @@ local M = {}
 
 function M.setup()
 	require("lazy").setup({
-				{
-					"rose-pine/neovim",
-					name = "rose-pine",
-					priority = 1000,
-					config = function()
-						require("rose-pine").setup({
-							variant = "moon", -- main | moon | dawn
-							styles = {
-								bold = true,
-								italic = false,
-							},
-						})
-						vim.cmd.colorscheme("rose-pine")
-					end,
-				},
+			-- Colorscheme: Rose Pine
+		{
+			"rose-pine/neovim",
+			name = "rose-pine",
+			lazy = false,
+			priority = 1000,
+			config = function()
+				require("rose-pine").setup({
+					-- You can change variant to "moon" or "dawn" later if you prefer
+					variant = "main",
+					styles = {
+						italic = false,
+					},
+				})
+				vim.o.background = "dark"
+					vim.cmd.colorscheme("rose-pine-moon")
+					-- Make the 120-column ruler highly visible
+					vim.api.nvim_set_hl(0, "ColorColumn", { ctermbg = 1, bg = "#512020" })
+			end,
+		},
 		{
 			"stevearc/oil.nvim",
 			-- Use oil as the default file explorer so opening a directory (e.g. `nvim .`)
@@ -135,7 +140,7 @@ function M.setup()
 					wk.setup()
 				end,
 			},
-		-- LSP: native Neovim LSP with mason for managing servers (gopls only for now)
+			-- LSP: native Neovim LSP with mason for managing servers (Go + JS/TS/HTML/CSS)
 		{
 			"williamboman/mason.nvim",
 			lazy = false,
@@ -147,85 +152,108 @@ function M.setup()
 			"neovim/nvim-lspconfig",
 			lazy = false,
 		},
-		{
-			"williamboman/mason-lspconfig.nvim",
-			lazy = false,
-			dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
-			config = function()
-				local mason_lspconfig = require("mason-lspconfig")
-				mason_lspconfig.setup({
-					ensure_installed = { "gopls" },
-				})
-
-				-- advertise completion capabilities to LSP servers (for nvim-cmp)
-				local capabilities = vim.lsp.protocol.make_client_capabilities()
-				local ok_cmp, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
-				if ok_cmp then
-					capabilities = cmp_nvim_lsp.default_capabilities(capabilities)
-				end
-
-				local function on_attach(_, bufnr)
-					local map = function(mode, lhs, rhs, desc)
-						vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+			{
+				"williamboman/mason-lspconfig.nvim",
+				lazy = false,
+				dependencies = { "williamboman/mason.nvim", "neovim/nvim-lspconfig" },
+				config = function()
+					local mason_lspconfig = require("mason-lspconfig")
+					mason_lspconfig.setup({
+						-- Auto-install gopls (Go) and jdtls (Java) via Mason.
+						-- JS/TS/HTML/CSS language servers are configured below but **not**
+						-- auto-installed, to avoid invoking npm directly in environments that
+						-- proxy Node packages via JFrog. Install tsserver/html/cssls using your
+						-- company-approved method.
+						ensure_installed = {
+							"gopls", -- Go
+							"jdtls", -- Java
+						},
+					})
+				
+					-- advertise completion capabilities to LSP servers (for nvim-cmp)
+					local capabilities = vim.lsp.protocol.make_client_capabilities()
+					local ok_cmp, cmp_nvim_lsp = pcall(require, "cmp_nvim_lsp")
+					if ok_cmp then
+						capabilities = cmp_nvim_lsp.default_capabilities(capabilities)
 					end
-
-					-- basic LSP navigation
-					map("n", "gd", vim.lsp.buf.definition, "LSP: goto definition")
-					map("n", "gD", vim.lsp.buf.declaration, "LSP: goto declaration")
-
-						local function lsp_implementations()
+				
+					local function on_attach(_, bufnr)
+						local map = function(mode, lhs, rhs, desc)
+							vim.keymap.set(mode, lhs, rhs, { buffer = bufnr, desc = desc })
+						end
+				
+						-- basic LSP navigation
+						map("n", "gd", vim.lsp.buf.definition, "LSP: goto definition")
+						map("n", "gD", vim.lsp.buf.declaration, "LSP: goto declaration")
+					
+							local function lsp_implementations()
+								local ok, builtin = pcall(require, "telescope.builtin")
+								if ok then
+									builtin.lsp_implementations()
+								else
+									vim.lsp.buf.implementation()
+								end
+							end
+							map("n", "gI", lsp_implementations, "LSP: implementations")
+					
+						-- use gR (not gr) so we do not conflict with Treesitter's grn/grm/grc
+						local function lsp_references()
 							local ok, builtin = pcall(require, "telescope.builtin")
 							if ok then
-								builtin.lsp_implementations()
+								builtin.lsp_references()
 							else
-								vim.lsp.buf.implementation()
+								vim.lsp.buf.references()
 							end
 						end
-						map("n", "gI", lsp_implementations, "LSP: implementations")
-
-					-- use gR (not gr) so we do not conflict with Treesitter's grn/grm/grc
-					local function lsp_references()
-						local ok, builtin = pcall(require, "telescope.builtin")
+						map("n", "gR", lsp_references, "LSP: references")
+					
+						-- hover docs
+						map("n", "K", vim.lsp.buf.hover, "LSP: hover")
+					
+						-- rename & code actions
+						map("n", "<leader>rn", vim.lsp.buf.rename, "LSP: rename")
+						map({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, "LSP: code action")
+					
+						-- diagnostics
+						map("n", "[d", vim.diagnostic.goto_prev, "LSP: prev diagnostic")
+						map("n", "]d", vim.diagnostic.goto_next, "LSP: next diagnostic")
+						map("n", "<leader>e", vim.diagnostic.open_float, "LSP: line diagnostics")
+					end
+				
+					-- All LSP servers we configure in the same way (incl. basic Java via jdtls)
+					local servers = {
+						"gopls",
+						"tsserver",
+						"html",
+						"cssls",
+						"jdtls",
+					}
+				
+					-- Modern Neovim 0.11+ LSP API (no deprecated require('lspconfig') framework)
+					if vim.lsp and vim.lsp.config and vim.lsp.enable then
+						for _, server in ipairs(servers) do
+							vim.lsp.config(server, {
+								on_attach = on_attach,
+								capabilities = capabilities,
+							})
+							vim.lsp.enable(server)
+						end
+					else
+						-- Fallback for older Neovim: use the old nvim-lspconfig API if available
+						local ok, lspconfig = pcall(require, "lspconfig")
 						if ok then
-							builtin.lsp_references()
-						else
-							vim.lsp.buf.references()
+							for _, server in ipairs(servers) do
+								if lspconfig[server] then
+									lspconfig[server].setup({
+										on_attach = on_attach,
+										capabilities = capabilities,
+									})
+								end
+							end
 						end
 					end
-					map("n", "gR", lsp_references, "LSP: references")
-
-					-- hover docs
-					map("n", "K", vim.lsp.buf.hover, "LSP: hover")
-
-					-- rename & code actions
-					map("n", "<leader>rn", vim.lsp.buf.rename, "LSP: rename")
-					map({ "n", "v" }, "<leader>ca", vim.lsp.buf.code_action, "LSP: code action")
-
-					-- diagnostics
-					map("n", "[d", vim.diagnostic.goto_prev, "LSP: prev diagnostic")
-					map("n", "]d", vim.diagnostic.goto_next, "LSP: next diagnostic")
-					map("n", "<leader>e", vim.diagnostic.open_float, "LSP: line diagnostics")
-				end
-
-				-- Modern Neovim 0.11+ LSP API (no deprecated require('lspconfig') framework)
-				if vim.lsp and vim.lsp.config and vim.lsp.enable then
-					vim.lsp.config("gopls", {
-						on_attach = on_attach,
-						capabilities = capabilities,
-					})
-					vim.lsp.enable("gopls")
-				else
-					-- Fallback for older Neovim: use the old nvim-lspconfig API if available
-					local ok, lspconfig = pcall(require, "lspconfig")
-					if ok then
-						lspconfig.gopls.setup({
-							on_attach = on_attach,
-							capabilities = capabilities,
-						})
-					end
-				end
-			end,
-		},
+				end,
+			},
 		{
 			"stevearc/conform.nvim",
 			event = { "BufReadPre", "BufNewFile" },
@@ -235,7 +263,13 @@ function M.setup()
 				conform.setup({
 					-- Choose formatter(s) per filetype
 					formatters_by_ft = {
-						go = { "gofmt" }, -- Go: use gofmt (comes with Go)
+							go = { "gofmt" }, -- Go: use gofmt (comes with Go)
+							javascript = { "prettier" },
+							javascriptreact = { "prettier" },
+							typescript = { "prettier" },
+							typescriptreact = { "prettier" },
+							html = { "prettier" },
+							css = { "prettier" },
 					},
 					-- IMPORTANT: do NOT enable format-on-save; you only format on keypress
 					format_on_save = false,
@@ -249,6 +283,34 @@ function M.setup()
 						timeout_ms = 5000,
 					})
 				end, { desc = "Format file or selection" })
+			end,
+		},
+		{
+			"mfussenegger/nvim-lint",
+			event = { "BufReadPre", "BufNewFile" },
+			config = function()
+				local lint = require("lint")
+
+				-- Configure linters per filetype
+				lint.linters_by_ft = {
+					go = { "golangci-lint" }, -- Use golangci-lint for Go files
+				}
+
+				-- Create autocommand group for linting
+				local lint_augroup = vim.api.nvim_create_augroup("lint", { clear = true })
+
+				-- Trigger linting on these events
+				vim.api.nvim_create_autocmd({ "BufEnter", "BufWritePost", "InsertLeave" }, {
+					group = lint_augroup,
+					callback = function()
+						lint.try_lint()
+					end,
+				})
+
+				-- Optional: Add a keymap to manually trigger linting
+				vim.keymap.set("n", "<leader>l", function()
+					lint.try_lint()
+				end, { desc = "Trigger linting for current file" })
 			end,
 		},
 			{
@@ -330,9 +392,12 @@ function M.setup()
 					"bash",
 					"markdown",
 					"markdown_inline",
-					"javascript",
-					"typescript",
-					"json",
+						"javascript",
+						"typescript",
+						"tsx",
+						"json",
+						"html",
+						"css",
 					"python",
 					"go",
 					"rust",

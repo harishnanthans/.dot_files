@@ -1,12 +1,12 @@
 # Font settings
-font-family = "Monaco"
+font-family = "Monaco Nerd Font Mono"
 font-size = 18
 
 # Scrollback
 scrollback-limit = 10000
 
 # Cursor
-cursor-style = bar
+cursor-style = block
 
 # Shell
 command = /bin/zsh
@@ -16,9 +16,6 @@ confirm-close-surface = false
 
 # macOS: Option as Alt (left only)
 macos-option-as-alt = left
-
-# Background color (gray to match Neovim theme)
-background = 2b2b2b
 
 # Window appearance
 window-padding-x = 0
@@ -30,7 +27,7 @@ macos-titlebar-style = hidden
 font-thicken = true
 
 # Cell height adjustment (110% = 1.1 multiplier)
-adjust-cell-height = 15%
+adjust-cell-height = 10%
 
 # Keybindings for Ctrl+h/j/k/l to send escape sequences (for tmux/neovim navigation)
 keybind = ctrl+h=text:\x1bh
@@ -40,4 +37,3 @@ keybind = ctrl+l=text:\x1bl
 
 # Reload config
 keybind = alt+r=reload_config
-

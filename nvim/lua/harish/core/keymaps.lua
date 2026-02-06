@@ -11,6 +11,9 @@ function M.setup()
 	-- Clear search highlight when pressing ESC in normal mode
 	map("n", "<Esc>", "<cmd>nohlsearch<CR><Esc>", opts)
 
+	-- Manual reload: force reload current buffer from disk
+	map("n", "<leader>r", "<cmd>edit!<CR>", { desc = "Reload buffer from disk" })
+
 	-- Split navigation with Ctrl + h/j/k/l
 	map("n", "<C-h>", "<C-w>h", opts)
 	map("n", "<C-j>", "<C-w>j", opts)
